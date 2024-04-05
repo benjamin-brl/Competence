@@ -1,0 +1,8 @@
+{
+    "appId": "YanisMatheoLea",
+    "masterKey": "*YaMaLe/008",
+    "databaseURI": "mongodb://localhost/competence",
+    "serverURL": "mongodb://localhost:27017/competence",
+    "appName": "competence"
+  }
+  
