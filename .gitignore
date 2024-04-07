@@ -1,13 +1,7 @@
-# Fichiers système
 .DS_Store
-
-# Dépendances Node.js
 node_modules
 Competence/node_modules
-/build
-/.svelte-kit
-
-# Fichiers de configuration
+Competence/build
 /package
 .env
 .env.*
@@ -15,6 +9,4 @@ Competence/node_modules
 vite.config.js
 vite.config.ts
 timestamp-*
-
-# Fichiers spécifiques à SvelteKit (ajoutez d'autres si nécessaire)
 Competence/.svelte-kit/ambient.d.ts

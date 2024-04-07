@@ -1,0 +1,1 @@
+![[Untitled.png]]Avant de commencer le prototypage nous nous étions concertés pour voir les idées de chacun, et nous avions tous la même idée par rapport au projet. De ce fait Nous avons chacun fait une partie du site plutôt qu’en faire x différente et mettre en commun.
