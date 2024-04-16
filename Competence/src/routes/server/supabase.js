@@ -24,13 +24,14 @@ export async function retourAccueil() {
 		if (error) {
 			console.error(`Erreur inattendue : ${error}`);
 		} else if (role) {
-			if (role[0].identifiant === 'rh' && location.pathname.split('/')[1] === 'rh') {
+			if (role[0].identifiant == 'rh' && location.pathname.split('/')[1] == 'rh') {
 				return;
-			} else if (role[0].identifiant !== 'collab' && location.pathname.split('/')[1] !== 'collaborateur') {
+			} else if (role[0].identifiant != 'collab' && location.pathname.split('/')[1] != 'collaborateur') {
 				location.href = '/';
 			}
+		} else {
+			return;
 		}
-		return;
 	} else if (!user) {
 		console.log('Utilisateur non connecté');
 		location.href = '/';

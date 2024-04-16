@@ -1,72 +1,41 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
 	import { supabase, signOut, retourAccueil, switchAccount } from '../../server/supabase.js';
 
-	// Déclaration des types
-	type Evaluation = {
-		idevaluation: string;
-		nom: string;
-	};
+	/**
+	 * @return {Promise<any[]>}
+	 */
+	async function getEvaluations() {
+		document.title = 'Récupère les évaluations...';
+		const { data, error } = await supabase
+			.from('evaluation')
+			.select('idevaluation, nom, composer(bareme)');
 
-	type Composer = {
-		bareme: number;
-		idevaluation: string;
-	};
-
-	type EvaluationDetail = {
-		idevaluation: string;
-		nom: string;
-		totalBareme: number;
-	};
-
-	let evaluationDetails: EvaluationDetail[] = [];
-
-	async function tableauLo() {
-		try {
-			const { data: dataEvaluation, error: errorEvaluation } = await supabase
-				.from('evaluation')
-				.select('idevaluation, nom');
-
-			const { data: dataComposer, error: errorComposer } = await supabase
-				.from('composer')
-				.select('bareme, idevaluation');
-
-			if (errorEvaluation) {
-				console.log(
-					'Problème avec la récupération des données de la table évaluation : ',
-					errorEvaluation
-				);
-			}
-
-			if (errorComposer) {
-				console.log(
-					'Problème avec la récupération des données de la table composer : ',
-					errorComposer
-				);
-			}
-
-			const evaluations: Evaluation[] = dataEvaluation || [];
-			const composer: Composer[] = dataComposer || [];
-
-			evaluationDetails = evaluations.map((evalua) => {
-				let bareme = 0;
-				for (const compos of composer) {
-					if (evalua.idevaluation === compos.idevaluation) {
-						bareme += compos.bareme;
-					}
-				}
-				return { idevaluation: evalua.idevaluation, nom: evalua.nom, totalBareme: bareme };
-			});
-		} catch (error) {
-			console.error('Erreur lors de la récupération des données :', error);
+		if (error) {
+			console.error('Erreur lors de la construction des évaluations', error);
+			throw new Error('Erreur lors de la construction des évaluations');
+		} else if (data) {
+			console.log('Récupération des données réussie', data);
+			return data;
+		} else {
+			console.warn('Pas de données');
+			throw new Error('Erreur lors de la construction des évaluations');
 		}
+	}
+
+	function computeTotalBareme(composers: { [x: number]: { bareme: number } }) {
+		document.title = 'Calcul les barèmes...';
+		let total = 0;
+		for (const composer in composers) {
+			total += composers[composer]?.bareme || 0;
+		}
+		return total;
 	}
 
 	//* ------------------------------------------- SUPPRESSION ------------------------------------------- *//
 
 	async function suppressionPasser(idevaluation: string) {
 		try {
-			//console.log(`Suppression de l'évaluation avec ID passer : ${idevaluation}`);
+			console.log(`Suppression de l'évaluation avec ID passer : ${idevaluation}`);
 			const { data, error } = await supabase
 				.from('passer')
 				.delete()
@@ -74,7 +43,7 @@
 			if (error) {
 				console.error('Erreur lors de la suppression passer :', error);
 			} else {
-				//console.log('Évaluation supprimée avec succès passer ', data);
+				console.log('Évaluation supprimée avec succès passer ', data);
 			}
 		} catch (error) {
 			console.error('Erreur lors de la suppression passer :', error);
@@ -83,12 +52,12 @@
 
 	async function suppressionNote(idevaluation: string) {
 		try {
-			//console.log(`Suppression de l'évaluation avec ID note : ${idevaluation}`);
+			console.log(`Suppression de l'évaluation avec ID note : ${idevaluation}`);
 			const { data, error } = await supabase.from('note').delete().eq('idEvaluation', idevaluation);
 			if (error) {
 				console.error('Erreur lors de la suppression note :', error);
 			} else {
-				//console.log('Évaluation supprimée avec succès note ', data);
+				console.log('Évaluation supprimée avec succès note ', data);
 			}
 		} catch (error) {
 			console.error('Erreur lors de la suppression note :', error);
@@ -97,7 +66,7 @@
 
 	async function suppressionComposer(idevaluation: string) {
 		try {
-			//console.log(`Suppression de l'évaluation avec ID composer : ${idevaluation}`);
+			console.log(`Suppression de l'évaluation avec ID composer : ${idevaluation}`);
 			const { data, error } = await supabase
 				.from('composer')
 				.delete()
@@ -105,7 +74,7 @@
 			if (error) {
 				console.error('Erreur lors de la suppression compo :', error);
 			} else {
-				//console.log('Évaluation supprimée avec succès compo', data);
+				console.log('Évaluation supprimée avec succès compo', data);
 			}
 		} catch (error) {
 			console.error('Erreur lors de la suppression compo :', error);
@@ -114,7 +83,7 @@
 
 	async function suppressionEvaluation(idevaluation: string) {
 		try {
-			//console.log(`Suppression de l'évaluation avec ID Evaluation : ${idevaluation}`);
+			console.log(`Suppression de l'évaluation avec ID Evaluation : ${idevaluation}`);
 			const { data, error } = await supabase
 				.from('evaluation')
 				.delete()
@@ -122,7 +91,7 @@
 			if (error) {
 				console.error('Erreur lors de la suppression eval :', error);
 			} else {
-				//console.log('Évaluation supprimée avec succès eval', data);
+				console.log('Évaluation supprimée avec succès eval', data);
 			}
 		} catch (error) {
 			console.error('Erreur lors de la suppression eval :', error);
@@ -145,14 +114,13 @@
 					.filter((link) => composerIds.includes(link.idcomposer))
 					.map((link) => link.idcomposer);
 
-				// Suppression des données de la table "link" en fonction des IDs filtrés
 				const { error: deletionError } = await supabase
 					.from('link')
 					.delete()
 					.in('idcomposer', linkIdsToDelete);
 
 				if (!deletionError) {
-					//console.log('Données supprimées avec succès de la table link', linkIdsToDelete);
+					console.log('Données supprimées avec succès de la table link', linkIdsToDelete);
 				} else {
 					console.error(
 						'Erreur lors de la suppression des données de la table link :',
@@ -207,48 +175,50 @@
 			<span class="text-dark mx-2">Chargement...</span>
 		</section>
 	{:then}
-		{#await tableauLo()}
+		{#await getEvaluations()}
 			<section class="container d-flex align-items-center justify-content-center vh-100">
 				<span class="spinner-border" />
 				<span class="text-dark mx-2">Chargement...</span>
 			</section>
-		{:then}
+		{:then evaluations}
 			<br /><br /><br /><br />
 
 			<h1>Liste des évaluations disponibles</h1>
 
 			<br /><br />
 
-			<a id="crea" href="../rh/creation_eval">~ Création d'une évaluation ~</a>
+			<a href="/rh/creation_eval">~ Création d'une évaluation ~</a>
 
 			<br /><br /><br />
 
-			{#each evaluationDetails as evalua}
+			{#each evaluations as evaluation}
 				<table>
 					<thead>
 						<tr>
 							<th>Intitulé</th>
 							<th>Barème</th>
-							<th id="manag">Gestion</th>
+							<th>Gestion</th>
 						</tr>
 					</thead>
 					<tbody>
 						<tr>
 							<td>
 								<a
-									href="../rh/noter?idevaluation={evalua.idevaluation}&bareme={evalua.totalBareme}"
+									href="/rh/noter?idevaluation={evaluation.idevaluation}&bareme={computeTotalBareme(
+										evaluation?.composer
+									)}"
 								>
-									{evalua.nom}
+									{evaluation.nom}
 								</a>
 							</td>
 							<td>
-								<p id="notation">
-									{evalua.totalBareme}
+								<p>
+									{computeTotalBareme(evaluation?.composer)}
 								</p>
 							</td>
-							<td id="manag">
-								<a id="edit" href="./modifEval?idevaluation={evalua.idevaluation}">modifier</a>
-								<button id="del" on:click={() => suppressionFinale(evalua.idevaluation)}
+							<td>
+								<a href="./modifEval?idevaluation={evaluation.idevaluation}">modifier</a>
+								<button on:click={() => suppressionFinale(evaluation.idevaluation)}
 									>supprimer</button
 								>
 							</td>
@@ -273,7 +243,6 @@
 </body>
 
 <style>
-
 	table {
 		padding: 10px;
 		margin-left: auto;

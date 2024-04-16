@@ -1,509 +1,454 @@
-<script>
+<script lang="ts">
 	// @ts-nocheck
-	import { onMount } from 'svelte';
-	import { supabase, signOut, retourAccueil, switchAccount } from '../../server/supabase.js';
+	import { supabase, signOut } from '../../server/supabase.js';
+	import { getCompetences } from '../../server/getter.js';
 
-	let idevaluation;
-	let inputValueSalarie = '';
-	let inputValueTitre = '';
-	let inputValueTitrecrit = '';
-	let inputValueNote = '';
-	let addCriteria = false;
-	let criteriaList = [];
-	let newCriterion = { titre: '', note: '', competences: [] };
-	/**
-	 * @type {string | any[]}
-	 */
-	let bloc2 = [];
-	/**
-	 * @type {string | any[]}
-	 */
-	let bloc = [];
-	/**
-	 * @type {string | any[]}
-	 */
-	let selectedCompetences = [];
-	let userId;
-	let idsalarie = null;
+	function getIdEval() {
+		const URL = new URLSearchParams(location.search);
+		const idEval = URL.get('idevaluation');
+		return idEval;
+	}
 
-	const extractEvaluationId = async () => {
-		const urlParams = new URLSearchParams(location.search);
-		idevaluation = parseInt(urlParams.get('idevaluation'), 10);
+	let idTest;
 
-		// Log pour déboguer
-		console.log("ID d'évaluation extrait de l'URL:", idevaluation);
+	async function addCriterion() {
+		// Créer l'élément div pour le critère, son barème, et ses compétences
+		const divCriterion = document.createElement('div');
+		divCriterion.classList.add('insertCriterion');
+		divCriterion.classList.add('mb-3'); // Ajoute une marge inférieure de 3 unités Bootstrap
 
-		// Vérifier si idevaluation est un nombre valide
+		// Créer l'élément label pour le critère
+		const labelCritere = document.createElement('label');
+		labelCritere.classList.add('form-label');
+		labelCritere.classList.add('fw-bold'); // Ajoute une graisse au texte
+		labelCritere.innerHTML = '<h4>Critère : </h4>';
 
-		if (!isNaN(idevaluation) && idevaluation > 0) {
-			// Récupérer les données existantes depuis la base de données pour l'évaluation
-			const { data: evaluationData, error: evaluationError } = await supabase
-				.from('evaluation')
-				.select('nom')
-				.eq('idevaluation', idevaluation)
-				.single();
+		// Créer l'élément input pour le critère
+		const inputCritere = document.createElement('input');
+		inputCritere.classList.add('form-control');
+		inputCritere.setAttribute('name', 'newCritere');
 
-			if (evaluationError) {
-				console.error(
-					"Erreur lors de la récupération des données existantes pour l'évaluation:",
-					evaluationError
-				);
-			} else {
-				// Pré-remplir les champs avec les données existantes
-				inputValueTitre = evaluationData.nom || '';
-			}
+		// Ajouter l'élément input à l'élément label
+		labelCritere.appendChild(inputCritere);
 
-			// Récupérer les données existantes pour les critères
-			const { data: criteriaData, error: criteriaError } = await supabase
-				.from('composer')
-				.select('*')
-				.eq('idevaluation', idevaluation);
+		// Créer l'élément label pour le barème
+		const labelBareme = document.createElement('label');
+		labelBareme.classList.add('form-label');
+		labelBareme.classList.add('fw-bold'); // Ajoute une graisse au texte
+		labelBareme.innerHTML = '<h4>Barème : </h4>';
 
-			if (criteriaError) {
-				console.error(
-					'Erreur lors de la récupération des données existantes pour les critères:',
-					criteriaError
-				);
-			} else {
-				// Pré-remplir les champs pour chaque critère
-				criteriaList = criteriaData.map((criterion) => {
-					return {
-						titre: criterion.nom || '',
-						note: criterion.bareme || '',
-						selectedCompetences: [], // Ajoutez d'autres propriétés si nécessaire
-						availableCompetences: [] // Ajoutez d'autres propriétés si nécessaire
-					};
-				});
-			}
-		}
-	};
+		// Créer l'élément input pour le barème
+		const inputBareme = document.createElement('input');
+		inputBareme.classList.add('form-control');
+		inputBareme.setAttribute('name', 'newBareme');
 
-	onMount(() => {
-		// Appeler la fonction pour extraire l'ID de l'évaluation lors du montage du composant
-		extractEvaluationId();
-	});
-	const addCriterion = () => {
-		const newCriterionCompetences = criteriaList.reduce((allCompetences, criterion) => {
-			return allCompetences.concat(criterion.selectedCompetences);
-		}, []);
+		// Ajouter l'élément input à l'élément label
+		labelBareme.appendChild(inputBareme);
 
-		// Vérifiez si le titre est déjà présent dans la liste
-		if (!criteriaList.some((criterion) => criterion.titre === newCriterion.titre)) {
-			criteriaList.push({
-				titre: newCriterion.titre,
-				note: newCriterion.note,
-				selectedCompetences: [],
-				availableCompetences: bloc2.filter(
-					(competence) => !newCriterionCompetences.includes(competence.titre)
-				)
-			});
-		}
-	};
-	const removeCriterion = (index) => {
-		criteriaList = criteriaList.filter((_, i) => i !== index);
-	};
-	const addCompetence2 = (event, index) => {
-		const selectedValue = event.target.value;
-		if (selectedValue) {
-			const competenceData = criteriaList[index].availableCompetences.find(
-				(c) => c.titre === selectedValue
-			);
+		// Ajouter les éléments labels à l'élément div
+		divCriterion.appendChild(labelCritere);
+		divCriterion.appendChild(labelBareme);
+		divCriterion.appendChild(await addCompetence(idTest));
 
-			if (competenceData) {
-				criteriaList[index].selectedCompetences = [
-					...criteriaList[index].selectedCompetences,
-					selectedValue
-				];
-				criteriaList[index].availableCompetences = getAvailableCompetences(
-					bloc2,
-					criteriaList[index].selectedCompetences
-				);
-			} else {
-				console.error(
-					'Compétence non trouvée dans availableCompetences:',
-					selectedValue,
-					criteriaList[index].availableCompetences
-				);
-			}
-		}
-	};
+		// Sélectionner l'élément parent où vous souhaitez ajouter ces éléments
+		const parentElement = document.getElementById('insertSection');
 
-	// Fonction pour récupérer l'ID de l'utilisateur depuis Supabase
-	async function fetchUserId() {
+		// Ajouter les éléments label et input au parent
+		parentElement.appendChild(divCriterion);
+
+		idTest++;
+	}
+
+	async function addCompetence(idTest) {
+		// Créer l'élément <ul> avec l'ID spécifié
+		const ulElement = document.createElement('ul');
+		ulElement.classList.add('insertListeCompetences');
+
+		const responseComp = await getCompetences();
+		// Parcourir les éléments responseComp
+		responseComp.forEach((comp) => {
+			// Créer l'élément <li> pour chaque compétence
+			const liElement = document.createElement('li');
+			liElement.classList.add('form-check');
+
+			// Créer l'élément <input> pour la case à cocher
+			const inputElement = document.createElement('input');
+			inputElement.classList.add('form-check-input');
+			inputElement.type = 'checkbox';
+			inputElement.name = 'insertCompetences';
+			inputElement.value = comp.idcompetence;
+			inputElement.id = `${idTest}-${comp.idcompetence}`;
+
+			// Créer l'élément <label> pour le titre de la compétence
+			const labelElement = document.createElement('label');
+			labelElement.classList.add('form-check-label');
+			labelElement.textContent = comp.titre;
+			labelElement.htmlFor = `${idTest}-${comp.idcompetence}`;
+
+			// Ajouter l'input et le label à l'élément <li>
+			liElement.appendChild(inputElement);
+			liElement.appendChild(labelElement);
+
+			// Ajouter l'élément <li> à l'élément <ul>
+			ulElement.appendChild(liElement);
+		});
+
+		return ulElement;
+	}
+
+	async function getEvalById(id: Number) {
 		try {
-			const {
-				data: { user }
-			} = await supabase.auth.getUser();
+			let { data: evaluation, error } = await supabase
+				.from('evaluation')
+				.select()
+				.eq('idevaluation', id);
 
-			if (user) {
-				userId = user.id;
-				console.log("ID de l'utilisateur:", userId);
-
-				// Exécution de la requête SQL pour récupérer idsalarie
-				const { data, error } = await supabase
-					.from('salarie')
-					.select('idsalarie')
-					.eq('uuid', userId);
-
-				if (error) {
-					console.error('Erreur lors de la récupération de idsalarie:', error);
-				} else {
-					if (data.length > 0) {
-						idsalarie = data[0].idsalarie;
-						console.log("idsalarie correspondant à l'UUID:", idsalarie);
-					} else {
-						console.warn("Aucun enregistrement trouvé pour l'UUID spécifié.");
-					}
-				}
-
-				// Appel de la fonction d'insertion avec l'idsalarie récupéré
+			if (error) {
+				console.error('Erreur : ' + error.message);
 			} else {
-				console.warn('Aucun utilisateur trouvé.');
+				return evaluation;
 			}
-		} catch (error) {
-			console.error("Erreur lors de la récupération de l'utilisateur:", error.message);
+		} catch (error: any) {
+			console.error('Erreur : ' + error.message);
 		}
 	}
 
-	const insertData = async () => {
-		// Avant d'insérer les données, assurez-vous que idevaluation est correctement défini
-		if (!idevaluation) {
-			console.error("L'idevaluation n'a pas été récupérée avec succès.");
-			return;
-		}
-
+	async function getCriteresByIdEval(idEval: Number) {
 		try {
-			// Insertion dans la table "evaluation"
-			const { data: evaluationData, error: evaluationError } = await supabase
-				.from('evaluation')
-				.update({ nom: inputValueTitre })
-				.eq('idevaluation', idevaluation);
+			let { data: criteres, error } = await supabase
+				.from('composer')
+				.select()
+				.eq('idevaluation', idEval);
 
-			if (evaluationError) {
-				console.error(
-					'Erreur lors de l\'insertion des données dans la table "evaluation":',
-					evaluationError
-				);
-				return;
+			if (error) {
+				console.error('Erreur : ' + error.message);
+			} else {
+				return criteres;
 			}
+		} catch (error: any) {
+			console.error('Erreur : ' + error.message);
+		}
+	}
 
-			// Insertion dans la table "composer"
-			const { data: composerData, error: composerError } = await supabase
+	async function getCompetencesByIdCrit(idCrit: Number) {
+		try {
+			let { data: competences, error } = await supabase
+				.from('link')
+				.select('competence(*)')
+				.eq('idcomposer', idCrit);
+
+			if (error) {
+				console.error('Erreur : ' + error.message);
+			} else {
+				return competences;
+			}
+		} catch (error: any) {
+			console.error('Erreur : ' + error.message);
+		}
+	}
+
+	// Fonctionne
+	async function updateTitreEval(idEval: Number, titre: String) {
+		try {
+			const { data, error } = await supabase
+				.from('evaluation')
+				.update({ nom: titre })
+				.eq('idevaluation', idEval)
+				.select();
+			if (error) {
+				console.error('Erreur : ' + error.message);
+			} else {
+				console.log(data);
+				return data;
+			}
+		} catch (e: any) {
+			console.error('Erreur : ' + e.message);
+		}
+	}
+
+	// Fonctionne
+	async function updateCritereAndBareme(idCompo: Number, nom: String, bareme: Number) {
+		try {
+			const { data, error } = await supabase
 				.from('composer')
 				.update({
-					nom: inputValueTitrecrit,
-					bareme: inputValueNote
+					nom: nom,
+					bareme: bareme
 				})
-				.eq('idevaluation', idevaluation);
-
-			if (composerError) {
-				console.error(
-					'Erreur lors de l\'insertion des données dans la table "composer":',
-					composerError
-				);
-				return;
+				.eq('idcomposer', idCompo)
+				.select();
+			if (error) {
+				console.error('Erreur : ' + error.message);
+			} else {
+				console.log(data);
+				return data;
 			}
+		} catch (e: any) {
+			console.error('Erreur : ' + e.message);
+		}
+	}
 
-			// Récupération de l'ID du dernier composer créé
-			const { data: lastcomposer, error: lastError } = await supabase
+	// Fonctionne
+	async function deleteLinkByIdEval(idEval: Number) {
+		try {
+			const { data, error } = await supabase.rpc('deletelinkbyideval', {
+				idevaluation_param: idEval
+			});
+			if (error) {
+				console.error('Erreur : ' + error.message);
+			}
+		} catch (e: any) {
+			console.error('Erreur : ' + e.message);
+		}
+	}
+
+	// Fonctionne
+	async function insertLink(idCompe: Number, idCompo: Number) {
+		try {
+			const { data, error } = await supabase
+				.from('link')
+				.insert([{ idcompetence: idCompe, idcomposer: idCompo }])
+				.select();
+			if (error) {
+				console.error('Erreur : ' + error.message);
+			} else {
+				return data;
+			}
+		} catch (e: any) {
+			console.error('Erreur : ' + e.message);
+		}
+	}
+
+	async function insertCritereAndBareme(idEval: Number, nom: String, bareme: Number) {
+		try {
+			const { data, error } = await supabase
+				.from('composer')
+				.insert([
+					{
+						idevaluation: idEval,
+						nom: nom,
+						bareme: bareme
+					}
+				])
+				.select();
+			if (error) {
+				console.error('Erreur : ' + error.message);
+			} else {
+				return data;
+			}
+		} catch (e: any) {
+			console.error('Erreur : ' + e.message);
+		}
+	}
+
+	async function getLastIdComposer() {
+		try {
+			let { data: composer, error } = await supabase
 				.from('composer')
 				.select('idcomposer')
 				.order('idcomposer', { ascending: false })
 				.limit(1);
 
-			if (lastError) {
-				console.error("Erreur lors de la récupération de l'idevaluation:", lastError);
-				return;
-			}
-
-			// Obtention de l'idcomposer créé lors de l'insertion
-			const idComposer = lastcomposer[0]?.idcomposer;
-
-			// Insertion des liens dans la table "link" pour chaque compétence sélectionnée
-			for (const competence of selectedCompetences) {
-				const competenceData = bloc2.find((c) => c.titre === competence);
-				if (!competenceData) {
-					console.error('Compétence non trouvée:', competence);
-					continue;
-				}
-
-				const idCompetence = competenceData.idcompetence;
-				const { data: linkData, error: linkError } = await supabase.from('link').insert([
-					{
-						idcomposer: idComposer,
-						idcompetence: idCompetence
-					}
-				]);
-
-				if (linkError) {
-					console.error('Erreur lors de l\'insertion des données dans la table "link":', linkError);
-					continue; // Passe à la prochaine itération en cas d'erreur
-				} else {
-					console.log('Lien inséré dans la table "link":', linkData);
-				}
-			}
-
-			// Mise à jour des critères dans la table "composer"
-			for (const criterion of criteriaList) {
-				const { data, error } = await supabase
-					.from('composer')
-					.update({
-						nom: criterion.titre,
-						bareme: criterion.note
-					})
-					.eq('idevaluation', idevaluation)
-					.eq('nom', criterion.titre);
-
-				if (error) {
-					console.error(
-						'Erreur lors de la mise à jour des données dans la table "composer":',
-						error
-					);
-					return;
-				} else {
-					console.log('Données mises à jour dans la table "composer":', data);
-				}
-
-				// Obtention de l'idcomposer créé lors de la mise à jour pour le critère actuel
-				const currentComposerId = data[0]?.idcomposer;
-
-				console.log("L'idcomposer créé pour le critère actuel est:", currentComposerId);
-
-				// Insertion des liens dans la table "link" pour chaque compétence sélectionnée
-				for (const selectedCompetence of criterion.selectedCompetences) {
-					// Recherche de la compétence dans bloc2
-					const competenceData = bloc2.find((c) => c.titre === selectedCompetence);
-
-					if (competenceData) {
-						const idCompetence = competenceData.idcompetence;
-						const { data: linkData, error: linkError } = await supabase.from('link').update([
-							{
-								idcomposer: currentComposerId,
-								idcompetence: idCompetence
-							}
-						]);
-
-						if (linkError) {
-							console.error(
-								'Erreur lors de l\'insertion des données dans la table "link":',
-								linkError
-							);
-						} else {
-							console.log('Lien inséré dans la table "link":', linkData);
-						}
-					} else {
-						console.error('Compétence non trouvée:', selectedCompetence);
-					}
-				}
-
-				// Filtrer les compétences utilisées
-				bloc2 = bloc2.filter((c) => !criterion.selectedCompetences.includes(c.titre));
-			}
-		} catch (error) {
-			console.error('Erreur inattendue:', error);
-		}
-	};
-
-	/**
-	 * @param {{ target: { value: any; }; }} event
-	 */
-
-	onMount(() => {
-		// Vous pouvez effectuer des actions supplémentaires lors du montage du composant
-		fetchUserId();
-	});
-	const removeCompetence = (competence) => {
-		selectedCompetences = selectedCompetences.filter((item) => item !== competence);
-		const competenceData = bloc.find((c) => c.titre === competence);
-		if (competenceData) {
-			bloc = [...bloc, competenceData];
-		}
-	};
-	const addCompetence = (event) => {
-		const selectedValue = event.target.value;
-		if (selectedValue) {
-			const competenceData = bloc2.find((c) => c.titre === selectedValue);
-
-			if (competenceData) {
-				selectedCompetences = [...selectedCompetences, selectedValue];
-				bloc = bloc.filter((c) => c.titre !== selectedValue);
-			}
-		}
-	};
-	const readData = async () => {
-		try {
-			const { data: competenceData, error: error3 } = await supabase
-				.from('competence')
-				.select('*')
-				.gt('idcompetence_1', 3)
-				.not('idcompetence_1', 'is', null);
-
-			if (error3) {
-				console.error('Erreur lors de la lecture des données dans la table "competence":', error3);
+			if (error) {
+				console.error('Erreur : ' + error.message);
 			} else {
-				bloc = competenceData;
-				bloc2 = competenceData;
+				if (composer?.length > 0) {
+					console.log(composer);
+					idTest = composer[0].idcomposer + 1;
+					return composer[0].idcomposer;
+				} else {
+					console.log('No data');
+					idTest = 0;
+				}
 			}
-		} catch (error) {
-			console.error('Erreur inattendue:', error);
+		} catch (error: any) {
+			console.error('Erreur : ' + error.message);
 		}
-	};
+	}
+	getLastIdComposer();
+
+	async function deleteCritByIdCompo(idCompo: Number) {
+		try {
+			const { error } = await supabase.from('composer').delete().eq('idcomposer', idCompo);
+			if (error) {
+				console.error('Erreur : ' + error.message);
+			}
+		} catch (error: any) {
+			console.error('Erreur : ' + error.message);
+		}
+	}
+
+	async function handleSubmit() {
+		/*
+		 *** Permet la modification des élémments déjà présents initialement | Fonctionne ***
+		 */
+		// Récupérer l'ID de l'évaluation | Fonctionne
+		const idEval: Number = getIdEval();
+		// console.log(idEval);
+
+		// Récupérer le nouveau Titre de l'évaluation | Fonctionne
+		const updateTitre: String = document.getElementById('updateTitre').value;
+		// console.log(updateTitre);
+		await updateTitreEval(idEval, updateTitre);
+
+		const listeCompo: HTMLCollection = document.getElementsByClassName('idCompo');
+		for (const elt of listeCompo) {
+			const idCompo: Number = parseInt(elt.id);
+			const updateCritere: String = elt.querySelector('input[name="updateCritere"]').value;
+			const updateBareme: Number = parseInt(elt.querySelector('input[name="updateBareme"]').value);
+			// console.log(idCompo, updateCritere, updateBareme);
+			await updateCritereAndBareme(idCompo, updateCritere, updateBareme);
+		}
+
+		// Récupérer pour chaque ul, les checkboxes cochées | Fonctionne
+		const listeUl: HTMLCollection = document.getElementsByClassName('updateListeCompetences');
+		await deleteLinkByIdEval(idEval);
+		for (const ul of listeUl) {
+			const idCompo: Number = parseInt(ul.id);
+			const checkboxes: HTMLCollection = ul.querySelectorAll('input[type="checkbox"]:checked');
+			checkboxes.forEach(async (checkbox) => {
+				// console.log(parseInt(checkbox.value));
+				await insertLink(parseInt(checkbox.value), idCompo);
+			});
+		}
+
+		/*
+		 *** Permet de gérer l'ajout de critères ***
+		 */
+		const listeInsertDiv = document.getElementsByClassName('insertCriterion');
+		Array.from(listeInsertDiv).forEach(async (div) => {
+			const newCritere: String = div.querySelector('input[name="newCritere"').value;
+			const newBareme: Number = parseInt(div.querySelector('input[name="newBareme"').value);
+			// console.log(idEval, newCritere, newBareme);
+			await insertCritereAndBareme(idEval, newCritere, newBareme);
+
+			const insertUl: HTMLElement = div.querySelector('ul');
+			const checkboxes: HTMLCollection = insertUl.querySelectorAll(
+				'input[type="checkbox"]:checked'
+			);
+			const lastIdCompo: Number = await getLastIdComposer();
+			checkboxes.forEach(async (checkbox) => {
+				// console.log(parseInt(checkbox.value));
+				await insertLink(parseInt(checkbox.value), lastIdCompo);
+			});
+		});
+	}
 </script>
 
-<body>
-	<nav class="navbar navbar-expand-sm bg-dark navbar-dark fixed-top">
-		<div class="container-fluid">
-			<ul class="navbar-nav">
-				<li class="nav-item">
-					<a class="nav-link active" href="/rh/accueil">Accueil</a>
-				</li>
-				<li class="nav-item">
-					<a class="nav-link" href="/rh/evaluationDispo">Evaluations</a>
-				</li>
-				<li class="nav-item">
-					<a class="nav-link" href="/" on:click|preventDefault={switchAccount}>SwitchAccount</a>
-				</li>
-				<li class="nav-item">
-					<a class="nav-link" href="/" on:click={signOut}>Déconnexion</a>
-				</li>
-			</ul>
-		</div>
-	</nav>
-	{#await retourAccueil()}
-		<section class="container d-flex align-items-center justify-content-center vh-100">
-			<span class="spinner-border" />
-			<span class="text-dark mx-2">Chargement...</span>
-		</section>
-	{:then}
-		{#await readData()}
-			<section class="container d-flex align-items-center justify-content-center vh-100">
-				<span class="spinner-border" />
-				<span class="text-dark mx-2">Chargement...</span>
-			</section>
-		{:then}
-			<a id="retour" href="/rh/evaluationDispo">⟸ retour</a>
-			<h1>Création d'une évaluation :</h1>
-			<label>
-				<h3>Valeur à insérer:</h3>
-				<br /><br />
-				<h4>titre:</h4>
-				<input class="form-control" bind:value={inputValueTitre} /><br />
-				<h4>titre critère:</h4>
-				<input class="form-control" bind:value={inputValueTitrecrit} /><br />
-				<h4>barème:</h4>
-				<input class="form-control" bind:value={inputValueNote} /><br />
-			</label>
-			<div>
-				<label for="mainDropdown"><h6>une ou plusieurs compétences :</h6></label>
-				<select
-					class="form-select"
-					aria-label="Default select example"
-					id="mainDropdown"
-					on:change={addCompetence}
-				>
-					{#if bloc.length > 0}
-						<option value="">Sélectionnez une compétence</option>
-						{#each bloc as competence, index (index)}
-							<option value={competence.titre} key={index}>
-								{competence.titre}
-							</option>
-						{/each}
-					{:else}
-						<option value="" disabled>Aucune compétence disponible</option>
-					{/if}
-				</select>
-
-				<h2>Compétences sélectionnées :</h2>
-				<ul>
-					{#if selectedCompetences.length > 0}
-						{#each selectedCompetences as competence}
-							<li>
-								<h6>{competence}</h6>
-								<button class="btn btn-danger" on:click={() => removeCompetence(competence)}
-									>Supprimer</button
-								>
-							</li>
-						{/each}
-					{:else}
-						<li><h6>Aucune compétence choisie</h6></li>
-					{/if}
-				</ul>
-				<label>
-					<input type="checkbox" bind:checked={addCriteria} /> Ajouter des critères et une note
-				</label>
-
-				{#if addCriteria}
-					<!-- Show input fields for criteria and note when the checkbox is checked -->
-					{#each criteriaList as criterion, index (index)}
-						<div>
-							<label>
-								<h4>Titre critère:</h4>
-								<input class="form-control" bind:value={criteriaList[index].titre} /><br />
-							</label>
-							<label>
-								<h4>Barème:</h4>
-								<input class="form-control" bind:value={criteriaList[index].note} /><br />
-							</label>
-							<button class="btn btn-danger" on:click={() => removeCriterion(index)}
-								>Supprimer</button
-							>
-							<label for={'competenceDropdown' + index}><h4>Compétences :</h4></label>
-							<select
-								class="form-select"
-								aria-label="Default select example"
-								id={'competenceDropdown' + index}
-								on:change={(event) => addCompetence2(event, index)}
-							>
-								{#if bloc2.length > 0}
-									<option value="">Sélectionnez une compétence</option>
-									{#each bloc2 as competence, competenceIndex (competenceIndex)}
-										<option value={competence.titre} key={competenceIndex}>
-											{competence.titre}
-										</option>
-									{/each}
-								{:else}
-									<option value="" disabled>Aucune compétence disponible</option>
-								{/if}
-							</select>
-							<h5>Compétences sélectionnées :</h5>
-							<ul>
-								{#each criterion.selectedCompetences as selectedCompetence, selectedIndex (selectedIndex)}
-									<li>{selectedCompetence}</li>
+<nav class="navbar navbar-expand-sm bg-dark navbar-dark sticky-top">
+	<div class="container-fluid">
+		<ul class="navbar-nav">
+			<li class="nav-item">
+				<a class="nav-link active" href="/rh/accueil">Accueil</a>
+			</li>
+			<li class="nav-item">
+				<a class="nav-link" href="/rh/evaluationDispo">Evaluations</a>
+			</li>
+			<li class="nav-item">
+				<a class="nav-link" href="/" on:click={signOut}>Déconnexion</a>
+			</li>
+		</ul>
+	</div>
+</nav>
+<main class="container-fluid">
+	<form id="formUpdate" action="" on:submit={handleSubmit}>
+		<h1 class="text-center">Modification d'une évaluation :</h1>
+		{#await getEvalById(getIdEval())}
+			<div class="spinner-border" role="status">
+				<span class="visually-hidden">Loading...</span>
+			</div>
+		{:then responseEval}
+			<label class="form-label">
+				<h4>Titre :</h4>
+				<input
+					class="form-control"
+					id="updateTitre"
+					name="updateTitre"
+					value={responseEval[0].nom}
+				/>
+			</label><br />
+			<!-- Pour avoir les critères et leur barème associé -->
+			{#await getCriteresByIdEval(getIdEval())}
+				<div class="spinner-border" role="status">
+					<span class="visually-hidden">Loading...</span>
+				</div>
+			{:then responseCrit}
+				{#each responseCrit as crit}
+					<div id={crit.idcomposer} class="idCompo">
+						<label class="form-label">
+							<h4>Critère :</h4>
+							<input class="form-control" name="updateCritere" value={crit.nom} />
+						</label><br />
+						<label class="form-label">
+							<h4>Barème :</h4>
+							<input class="form-control" name="updateBareme" value={crit.bareme} />
+						</label><br />
+					</div>
+					<!-- Pour avoir les compétences liées à un critère -->
+					<h4>Liste des compétences initialement cochées :</h4>
+					{#await getCompetencesByIdCrit(crit.idcomposer)}
+						<div class="spinner-border" role="status">
+							<span class="visually-hidden">Loading...</span>
+						</div>
+					{:then responseCompByIdCrit}
+						<ul>
+							{#each responseCompByIdCrit as comp}
+								<li>{comp.competence.titre}</li>
+							{/each}
+						</ul>
+						<button
+							class="btn btn-danger supprCrit"
+							id={crit.idcomposer}
+							on:click={(event) => deleteCritByIdCompo(event.target.id)}>Supprimer</button
+						>
+						<h4>Liste des compétences que vous pouvez cocher pour ce critère :</h4>
+						{#await getCompetences()}
+							<div class="spinner-border" role="status">
+								<span class="visually-hidden">Loading...</span>
+							</div>
+						{:then responseComp}
+							<ul id={crit.idcomposer} class="updateListeCompetences">
+								{#each responseComp as comp}
+									<li class="form-check" id="DefaultComp">
+										<input
+											class="form-check-input"
+											type="checkbox"
+											name="updateCompetences"
+											value={comp.idcompetence}
+											id="{crit.idcomposer}-{comp.idcompetence}"
+										/>
+										<label class="form-check-label" for="{crit.idcomposer}-{comp.idcompetence}">
+											{comp.titre}
+										</label>
+									</li>
 								{/each}
 							</ul>
-						</div>
-					{/each}
-					<button class="btn btn-success" on:click={addCriterion}>Ajouter un critère</button>
-				{/if}
-
-				<button class="btn btn-danger" on:click={insertData}>Insérer</button>
-			</div>
-			<script>
-				document.title = 'Cafétence | Modifier Evaluation';
-			</script>
+						{:catch error}
+							<p>Une erreur est survenue, {error}</p>
+						{/await}
+					{:catch error}
+						<p>Une erreur est survenue, {error}</p>
+					{/await}
+				{/each}
+			{:catch error}
+				<p>Une erreur est survenue, {error}</p>
+			{/await}
 		{:catch error}
-			<section class="container d-flex align-items-center justify-content-center vh-100">
-				<span class="text-dark mx-2">Une erreur est survenue : {error}</span>
-			</section>
-			<script>
-				document.title = 'Erreur...';
-			</script>
+			<p>Une erreur est survenue, {error}</p>
 		{/await}
-	{/await}
-</body>
-
-<style>
-	ul {
-		list-style-type: none;
-		padding: 0; /* Pour éviter l'espacement par défaut du navigateur */
-	}
-
-	#retour {
-		color: rgb(218, 218, 218);
-		margin-right: 80%;
-	}
-
-	#retour:hover {
-		color: black;
-	}
-</style>
+		<section id="insertSection">
+			<h4>Rajouter des critères :</h4>
+		</section>
+		<input
+			type="button"
+			class="btn btn-info"
+			value="Rajouter des critères"
+			on:click={() => {
+				addCriterion(idTest);
+			}}
+		/>
+		<div class="row">
+			<input type="submit" class="btn btn-success w-25 mx-auto" value="Valider" />
+		</div>
+	</form>
+</main>
