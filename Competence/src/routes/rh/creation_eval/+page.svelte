@@ -1,6 +1,5 @@
 <script>
 	// @ts-nocheck
-	import { onMount } from 'svelte';
 	import { supabase, signOut, retourAccueil, switchAccount } from '../../server/supabase.js';
 
 	let inputValueTitre = '';
@@ -77,43 +76,6 @@
 			}
 		}
 	};
-
-	// Fonction pour récupérer l'ID de l'utilisateur depuis Supabase
-	async function fetchUserId() {
-		try {
-			const {
-				data: { user }
-			} = await supabase.auth.getUser();
-
-			if (user) {
-				userId = user.id;
-				//console.log('ID de l\'utilisateur:', userId);
-
-				// Exécution de la requête SQL pour récupérer idsalarie
-				const { data, error } = await supabase
-					.from('salarie')
-					.select('idsalarie')
-					.eq('uuid', userId);
-
-				if (error) {
-					console.error('Erreur lors de la récupération de idsalarie:', error);
-				} else {
-					if (data.length > 0) {
-						idsalarie = data[0].idsalarie;
-						//console.log('idsalarie correspondant à l\'UUID:', idsalarie);
-					} else {
-						console.warn("Aucun enregistrement trouvé pour l'UUID spécifié.");
-					}
-				}
-
-				// Appel de la fonction d'insertion avec l'idsalarie récupéré
-			} else {
-				console.warn('Aucun utilisateur trouvé.');
-			}
-		} catch (error) {
-			console.error("Erreur lors de la récupération de l'utilisateur:", error.message);
-		}
-	}
 
 	const insertData = async () => {
 		try {
@@ -300,9 +262,9 @@
 		}
 	};
 
-	onMount(() => {
-		fetchUserId();
-	});
+	// onMount(() => {
+	// 	getSalarie();
+	// });
 
 	const removeCompetence = (competence) => {
 		selectedCompetences = selectedCompetences.filter((item) => item !== competence);
@@ -419,7 +381,6 @@
 				</label>
 
 				{#if addCriteria}
-					<!-- Show input fields for criteria and note when the checkbox is checked -->
 					{#each criteriaList as criterion, index (index)}
 						<div>
 							<label>

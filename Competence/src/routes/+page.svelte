@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getSalarieID, getSalarieRole } from './server/getter.js';
+	import { getSalarie, getSalarieByUUID, getSalarieRole } from './server/getter.js';
 	import { verifSalarieRole } from './server/veriffer.js';
 	import { supabase, signOut, switchAccount } from './server/supabase.js';
 
@@ -20,7 +20,7 @@
 		} else if (!data.session) {
 			console.error('Erreur de connexion');
 		} else if (data.user) {
-			const idsalarie = await getSalarieID(data.user.id);
+			const idsalarie = await getSalarieByUUID(data.user.id);
 			const role = await getSalarieRole(idsalarie)
 			if (await verifSalarieRole(idsalarie, role)) {
 				const rolename = role == 'rh' ? 'rh' : 'collaborateur';

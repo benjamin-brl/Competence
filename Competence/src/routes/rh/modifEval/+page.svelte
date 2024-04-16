@@ -351,9 +351,24 @@
 </script>
 
 <body>
-	<li class="nav-item">
-		<a class="nav-link" href="/" on:click|preventDefault={switchAccount}>SwitchAccount</a>
-	</li>
+	<nav class="navbar navbar-expand-sm bg-dark navbar-dark fixed-top">
+		<div class="container-fluid">
+			<ul class="navbar-nav">
+				<li class="nav-item">
+					<a class="nav-link active" href="/rh/accueil">Accueil</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" href="/rh/evaluationDispo">Evaluations</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" href="/" on:click|preventDefault={switchAccount}>SwitchAccount</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" href="/" on:click={signOut}>Déconnexion</a>
+				</li>
+			</ul>
+		</div>
+	</nav>
 	{#await retourAccueil()}
 		<section class="container d-flex align-items-center justify-content-center vh-100">
 			<span class="spinner-border" />

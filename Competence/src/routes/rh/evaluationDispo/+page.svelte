@@ -179,10 +179,6 @@
 
 		location.reload();
 	}
-
-	onDestroy(() => {
-		// Nettoyage des ressources si nécessaire
-	});
 </script>
 
 <body>
@@ -277,14 +273,6 @@
 </body>
 
 <style>
-	body {
-		text-align: center;
-		background-color: rgb(105, 107, 107);
-	}
-
-	::placeholder {
-		color: rgb(196, 192, 192);
-	}
 
 	table {
 		padding: 10px;

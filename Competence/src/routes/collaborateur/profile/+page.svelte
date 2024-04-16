@@ -1,4 +1,5 @@
 <script lang="ts">
+	// @ts-nocheck
 	import { signOut, retourAccueil, switchAccount } from '../../server/supabase.js';
 	import {
 		getSalarie,
@@ -176,9 +177,6 @@
 			text-align: center;
 			color: black;
 		}
-	}
-	p {
-		margin-top: 5%;
 	}
 	h1 {
 		margin-top: 3%;

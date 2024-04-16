@@ -350,15 +350,6 @@
 </body>
 
 <style>
-	body {
-		text-align: center;
-		background-color: rgb(105, 107, 107);
-	}
-
-	::placeholder {
-		color: rgb(196, 192, 192);
-	}
-
 	a {
 		color: white;
 		text-decoration: none;
@@ -367,7 +358,6 @@
 	a:hover {
 		text-align: center;
 		color: black;
-		cursor: url(http://diablol.n2o.free.fr/didisurvol.cur), auto;
 	}
 
 	#retour {

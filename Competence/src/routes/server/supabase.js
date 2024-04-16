@@ -26,9 +26,7 @@ export async function retourAccueil() {
 		} else if (role) {
 			if (role[0].identifiant === 'rh' && location.pathname.split('/')[1] === 'rh') {
 				return;
-			} else if (role[0].identifiant === 'collab' && location.pathname.split('/')[1] === 'collaborateur') {
-				return;
-			} else {
+			} else if (role[0].identifiant !== 'collab' && location.pathname.split('/')[1] !== 'collaborateur') {
 				location.href = '/';
 			}
 		}

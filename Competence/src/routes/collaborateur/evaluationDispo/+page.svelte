@@ -1,17 +1,15 @@
 <script lang="ts">
 	import { supabase, signOut, retourAccueil, switchAccount } from '../../server/supabase.js';
 	import { getSalarie } from '../../server/getter.js';
-	import { navigate } from 'svelte-routing';
 
 	/**
 	 * @return {Promise<any[any[] | number]>}
 	 */
 	async function getEvaluations() {
-		const idsalarie = await getSalarie();
-		const { data: data, error: error } = await supabase
+		const { data, error } = await supabase
 			.from('evaluation')
 			.select('*, composer(idcomposer, nom, bareme), note(id_note, note, remarque)')
-			.eq('idsalarie', idsalarie);
+			.eq('idsalarie', await getSalarie());
 
 		if (error) {
 			console.error('Erreur lors de la construction des évaluations', error);

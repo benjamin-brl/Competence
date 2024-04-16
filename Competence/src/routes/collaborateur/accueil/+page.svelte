@@ -111,18 +111,4 @@
 	p {
 		color: rgb(194, 193, 193);
 	}
-
-	button {
-		background: none;
-		color: white;
-		border: none;
-		padding: 0;
-		font: inherit;
-		cursor: pointer;
-		outline: inherit;
-	}
-
-	button:hover {
-		color: black;
-	}
 </style>
