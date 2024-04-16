@@ -1,62 +1,34 @@
 <script lang="ts">
-	import { supabase } from './server/supabase.js';
+	import { getSalarieID, getSalarieRole } from './server/getter.js';
+	import { verifSalarieRole } from './server/veriffer.js';
+	import { supabase, signOut, switchAccount } from './server/supabase.js';
 
-	var login = {
+	let login = {
 		user: '',
 		password: ''
 	};
 
-	async function connexion() {
+	async function connexion(): Promise<void> {
+		document.title = 'En cours de connexion';
 		const { data, error } = await supabase.auth.signInWithPassword({
 			email: login.user,
 			password: login.password
 		});
+
 		if (error) {
 			console.error('Erreur de connexion : ', error.message);
 		} else if (!data.session) {
 			console.error('Erreur de connexion');
 		} else if (data.user) {
-			console.log('Authentification réussi');
-			let uuid = data.user.id;
-			let { data: salarie, error } = await supabase
-				.from('salarie')
-				.select('idsalarie')
-				.eq('uuid', uuid);
-			if (error) {
-				console.error('Error salarie : ', error.message);
-			}
-			if (salarie) {
-				let { data: rh, error } = await supabase
-					.from('rh')
-					.select('idsalarie')
-					.eq('idsalarie', salarie[0].idsalarie);
-				if (error) {
-					console.error('Error rh : ', error.message);
-				}
-
-				if (rh) {
-					if (rh[0]?.idsalarie != null) {
-						document.location.href = '/rh/accueil';
-					} else {
-						let { data: collaborateur, error } = await supabase
-							.from('collaborateur')
-							.select('idsalarie')
-							.eq('idsalarie', salarie[0]?.idsalarie);
-						if (error) {
-							console.error('Error collaborateur : ', error.message);
-						}
-						if (collaborateur) {
-							if (collaborateur[0]?.idsalarie != null) {
-								document.location.href = '/collaborateurs/accueil';
-							}
-						}
-					}
-				}
+			const idsalarie = await getSalarieID(data.user.id);
+			const role = await getSalarieRole(idsalarie)
+			if (await verifSalarieRole(idsalarie, role)) {
+				const rolename = role == 'rh' ? 'rh' : 'collaborateur';
+				location.href = `/${rolename}/accueil`
+			} else {
+				console.warn(`Le salarié (${idsalarie}) n'est pas dans enregistré en tant que "${role}"`)
 			}
 		}
-	}
-	async function signOut() {
-		const { error } = await supabase.auth.signOut();
 	}
 </script>
 
@@ -68,39 +40,41 @@
 					<a class="nav-link active" href="/">Accueil</a>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link" href="/collaborateurs/accueil">Collaborateurs</a>
+					<a class="nav-link" href="/inscription">Inscription</a>
 				</li>
 				<li class="nav-item">
-					<button class="nav-link" on:click={signOut}>Déconnexion</button>
+					<a class="nav-link" href="/" on:click|preventDefault={switchAccount}>SwitchAccount</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" href="/" on:click={signOut}>Déconnexion</a>
 				</li>
 			</ul>
 		</div>
 	</nav>
-
-	<br /><br /><br /><br />
-
-	<h1>Bienvenue dans Cafétences</h1>
-	<form on:submit|preventDefault={connexion}>
-		<h2>Identifiants</h2>
-		<input
-			type="text"
-			class="form-control"
-			placeholder="Ton Nom"
-			bind:value={login.user}
-		/>
-		<h2>Mot de passe</h2>
-		<input
-			type="password"
-			class="form-control"
-			placeholder="Ton mot de passe"
-			bind:value={login.password}
-		/>
-		<input
-			type="submit"
-			class="btn btn-dark"
-			value="Se connecter"
-		/>
-	</form>
+	<section class="container-fluid m-auto pt-xxl-5">
+		<br />
+		<h1>Bienvenue dans Cafétence</h1>
+		<form on:submit|preventDefault={connexion}>
+			<h2>Identifiants</h2>
+			<input
+				type="text"
+				class="form-control"
+				placeholder="example@gmail.com"
+				bind:value={login.user}
+			/>
+			<h2>Mot de passe</h2>
+			<input
+				type="password"
+				class="form-control"
+				placeholder="Votre mot de passe"
+				bind:value={login.password}
+			/>
+			<input type="submit" class="form-control btn btn-dark" value="Se connecter" />
+		</form>
+	</section>
+	<script>
+		document.title = 'Cafétence | Connexion';
+	</script>
 </body>
 
 <style>

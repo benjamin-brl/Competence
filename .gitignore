@@ -3,6 +3,7 @@ node_modules
 Competence/node_modules
 Competence/build
 /package
+Supabase/*
 .env
 .env.*
 !.env.example
@@ -10,3 +11,4 @@ vite.config.js
 vite.config.ts
 timestamp-*
 Competence/.svelte-kit/ambient.d.ts
+.vscode
